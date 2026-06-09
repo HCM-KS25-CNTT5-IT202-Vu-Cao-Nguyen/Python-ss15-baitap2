@@ -1,158 +1,164 @@
-"""
-Global Variables
-atm_vault_balance = 50000000
-user_account_balance = 10000000
-
-Hai biến này đại diện cho trạng thái chung của hệ thống ATM nên được khai báo toàn cục.
-
-Hàm sử dụng Arguments
-deposit_money(amount) → nhận số tiền cần nạp.
-check_withdrawal_rules(amount) → nhận số tiền muốn rút.
-execute_withdrawal(total_deduction, amount_to_dispense) → nhận tổng tiền cần trừ và số tiền thực tế trả ra.
-Hàm thao tác trực tiếp với Global Variables
-display_balances()
-deposit_money()
-execute_withdrawal()
-
-Các hàm này cần cập nhật hoặc đọc trực tiếp trạng thái hệ thống nên sử dụng global.
-
-Luồng rút tiền
-Người dùng nhập số tiền.
-Gọi check_withdrawal_rules(amount).
-Hàm trả về:
-"INVALID_AMOUNT"
-"INVALID_MULTIPLE"
-"INSUFFICIENT_FUNDS"
-"ATM_OUT_OF_CASH"
-"OK"
-Nếu "OK" → gọi execute_withdrawal().
-"""
-
-atm_vault_balance = 50000000
-user_account_balance = 10000000
+atm_vault_balance = 50_000_000
+user_account_balance = 10_000_000
 
 
 def display_balances():
-    print("\n--- SỐ DƯ TÀI KHOẢN ---")
-    print(f"Tài khoản của bạn: {user_account_balance:,} VND")
-    print(f"(Debug) Tiền mặt trong ATM: {atm_vault_balance:,} VND")
+    """
+    Display the current account balance and ATM vault balance.
+
+    Reads both global variables and prints them to the screen.
+    The vault balance is printed for debug purposes only.
+
+    Parameters: None.
+    Returns: None.
+    """
+    print("--- SỐ DƯ TÀI KHOẢN ---")
+    print(f"Tài khoản của bạn: {user_account_balance:,.0f} VND".replace(",", "."))
+    print(f"(Debug) Tiền mặt trong ATM: {atm_vault_balance:,.0f} VND".replace(",", "."))
 
 
 def deposit_money(amount):
-    global user_account_balance
-    global atm_vault_balance
+    """
+    Deposit money into the user's account and the ATM vault.
 
+    Both global balances increase by the given amount because
+    physical cash is inserted into the machine.
+
+    Parameters:
+        amount (int): Amount of money to deposit. Must be greater than 0.
+
+    Returns:
+        bool: True if the deposit was successful.
+    """
+    global user_account_balance, atm_vault_balance
     user_account_balance += amount
     atm_vault_balance += amount
-
+    formatted = f"{user_account_balance:,.0f}".replace(",", ".")
+    print(f"Giao dịch thành công! Số dư tài khoản hiện tại: {formatted} VND.")
     return True
 
 
 def check_withdrawal_rules(amount):
+    """
+    Validate a withdrawal request against business rules.
+
+    Calculates the transaction fee and total deduction, then checks
+    three conditions: multiple-of-50000, sufficient user funds,
+    and sufficient ATM cash.
+
+    Parameters:
+        amount (int): Amount the user wants to withdraw. Must be > 0
+                      and a multiple of 50,000.
+
+    Returns:
+        str: One of three status codes:
+             "NOT_MULTIPLE"        — amount is not a multiple of 50,000
+             "INSUFFICIENT_FUNDS"  — user account cannot cover amount + fee
+             "ATM_OUT_OF_CASH"     — ATM vault has less cash than amount
+             "OK"                  — all conditions passed
+    """
     fee = 1100
     total_deduction = amount + fee
 
-    if amount <= 0:
-        return "INVALID_AMOUNT", 0, 0
-
-    if amount % 50000 != 0:
-        return "INVALID_MULTIPLE", 0, 0
-
+    if amount % 50_000 != 0:
+        return "NOT_MULTIPLE"
     if total_deduction > user_account_balance:
-        return "INSUFFICIENT_FUNDS", 0, fee
-
+        return "INSUFFICIENT_FUNDS"
     if amount > atm_vault_balance:
-        return "ATM_OUT_OF_CASH", 0, fee
-
-    return "OK", total_deduction, fee
+        return "ATM_OUT_OF_CASH"
+    return "OK"
 
 
 def execute_withdrawal(total_deduction, amount_to_dispense):
-    global user_account_balance
-    global atm_vault_balance
+    """
+    Execute the withdrawal by updating both global balances and printing a receipt.
 
+    Called only after check_withdrawal_rules() returns "OK".
+    Deducts total_deduction (amount + fee) from the user account,
+    and deducts amount_to_dispense (cash given out) from the ATM vault.
+
+    Parameters:
+        total_deduction   (int): Amount deducted from user account (amount + fee).
+        amount_to_dispense(int): Actual cash dispensed from the ATM vault.
+
+    Returns: None.
+    """
+    global user_account_balance, atm_vault_balance
+    fee = total_deduction - amount_to_dispense
     user_account_balance -= total_deduction
     atm_vault_balance -= amount_to_dispense
 
+    formatted_amount  = f"{amount_to_dispense:,.0f}".replace(",", ".")
+    formatted_fee     = f"{fee:,.0f}".replace(",", ".")
+    formatted_balance = f"{user_account_balance:,.0f}".replace(",", ".")
+
     print("Giao dịch đang xử lý...")
-    print("Phí giao dịch: 1,100 VND")
-    print(f"Bạn đã rút thành công {amount_to_dispense:,} VND.")
-    print(
-        f"Số dư tài khoản còn lại: {user_account_balance:,} VND."
-    )
-
-
-def show_menu():
-    print("\n============= SMART ATM =============")
-    print("1. Xem số dư")
-    print("2. Nạp tiền")
-    print("3. Rút tiền")
-    print("4. Kết thúc giao dịch")
-    print("=====================================")
+    print(f"Phí giao dịch: {formatted_fee} VND")
+    print(f"Bạn đã rút thành công {formatted_amount} VND.")
+    print(f"Số dư tài khoản còn lại: {formatted_balance} VND.")
 
 
 def main():
+    """
+    Run the main ATM loop, displaying the menu and routing user choices
+    to the appropriate handler functions.
+
+    Parameters: None.
+    Returns: None.
+    """
     while True:
-        show_menu()
+        print("\n============= SMART ATM =============")
+        print("1. Xem số dư")
+        print("2. Nạp tiền")
+        print("3. Rút tiền")
+        print("4. Kết thúc giao dịch")
+        print("=====================================")
+        choice = input("Vui lòng chọn giao dịch (1-4): ").strip()
 
-        choice = input("Vui lòng chọn giao dịch (1-4): ")
+        match choice:
+            case "1":
+                display_balances()
 
-        if choice == "1":
-            display_balances()
+            case "2":
+                print("--- NẠP TIỀN ---")
+                raw = input("Nhập số tiền muốn nạp: ").strip()
+                if not raw.isdigit():
+                    print("Số tiền không hợp lệ.")
+                    continue
+                amount = int(raw)
+                if amount <= 0:
+                    print("Số tiền không hợp lệ.")
+                    continue
+                deposit_money(amount)
 
-        elif choice == "2":
-            print("\n--- NẠP TIỀN ---")
+            case "3":
+                print("--- RÚT TIỀN ---")
+                raw = input("Nhập số tiền cần rút: ").strip()
+                if not raw.isdigit():
+                    print("Số tiền không hợp lệ.")
+                    continue
+                amount = int(raw)
+                if amount <= 0:
+                    print("Số tiền không hợp lệ.")
+                    continue
+                status = check_withdrawal_rules(amount)
+                match status:
+                    case "NOT_MULTIPLE":
+                        print("Số tiền rút phải là bội số của 50,000.")
+                    case "INSUFFICIENT_FUNDS":
+                        print("Giao dịch thất bại: Số dư tài khoản không đủ.")
+                    case "ATM_OUT_OF_CASH":
+                        print("Giao dịch thất bại: Máy ATM không đủ tiền mặt để phục vụ.")
+                    case "OK":
+                        fee = 1100
+                        execute_withdrawal(amount + fee, amount)
 
-            amount = int(input("Nhập số tiền muốn nạp: "))
+            case "4":
+                print("Cảm ơn quý khách đã sử dụng dịch vụ!")
+                break
 
-            if amount <= 0:
-                print("Số tiền không hợp lệ")
-                continue
-
-            if deposit_money(amount):
-                print(
-                    f"Giao dịch thành công! "
-                    f"Số dư tài khoản hiện tại: "
-                    f"{user_account_balance:,} VND."
-                )
-
-        elif choice == "3":
-            print("\n--- RÚT TIỀN ---")
-
-            amount = int(input("Nhập số tiền cần rút: "))
-
-            status, total_deduction, fee = check_withdrawal_rules(amount)
-
-            if status == "INVALID_AMOUNT":
-                print("Số tiền không hợp lệ")
-
-            elif status == "INVALID_MULTIPLE":
-                print("Số tiền rút phải là bội số của 50,000")
-
-            elif status == "INSUFFICIENT_FUNDS":
-                print(
-                    "Giao dịch thất bại: "
-                    "Số dư tài khoản không đủ."
-                )
-
-            elif status == "ATM_OUT_OF_CASH":
-                print(
-                    "Giao dịch thất bại: "
-                    "Máy ATM không đủ tiền mặt để phục vụ."
-                )
-
-            elif status == "OK":
-                execute_withdrawal(
-                    total_deduction,
-                    amount
-                )
-
-        elif choice == "4":
-            print("Cảm ơn quý khách đã sử dụng dịch vụ!")
-            break
-
-        else:
-            print("Lựa chọn không hợp lệ.")
+            case _:
+                print("Lựa chọn không hợp lệ. Vui lòng chọn từ 1 đến 4.")
 
 
 main()
